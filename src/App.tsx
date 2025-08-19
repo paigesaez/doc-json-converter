@@ -51,7 +51,9 @@ export default function App() {
   }, [mainTopic, subTopics, edgeCases]);
 
   const isValid = useMemo(() => {
-    return conversion.main_topic.length > 0 && conversion.sub_topics.length > 0;
+    return conversion.main_topic.length > 0 && 
+           conversion.sub_topics.length > 0 && 
+           conversion.edge_cases.length > 0;
   }, [conversion]);
 
   const handleSubmit = async () => {
@@ -255,7 +257,11 @@ export default function App() {
                   JSON Preview
                 </label>
                 <span className={`text-xs px-2 py-1 rounded ${isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {isValid ? 'Valid' : 'Invalid: ' + (!conversion.main_topic ? 'main_topic required' : 'sub_topics required')}
+                  {isValid ? 'Valid' : 'Invalid: ' + (
+                    !conversion.main_topic ? 'main_topic required' : 
+                    !conversion.sub_topics.length ? 'sub_topics required' : 
+                    'edge_cases required'
+                  )}
                 </span>
               </div>
               <pre className="w-full h-96 p-3 bg-gray-50 border border-gray-200 rounded-lg overflow-auto text-sm">
