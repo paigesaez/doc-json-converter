@@ -1,6 +1,16 @@
-# Doc → JSON → Submit UI
+# Create New Topics
 
-A React-based web application that parses structured documents into JSON and submits them to a webhook endpoint. This is a frontend prototype for document processing and Google Sheets generation workflow.
+A web application that converts labeling instruction documents into structured JSON for generating Google Sheets. Built for creating consistent topic tagging templates for labeling workflows.
+
+## Features
+
+- **Two Input Modes:**
+  - **From Document**: Paste labeling instructions → auto-extracts topic, subtopics, and edge cases
+  - **Manual Input**: Type or paste directly into fields
+- **Automatic Cleaning:** Removes bullets, numbers, quotes, duplicates
+- **Live JSON Preview:** See exactly what will be submitted
+- **Editable Fields:** Review and modify extracted data before submission
+- **Google Sheets Integration:** Generates "Topic Tagging: [topic]" sheets
 
 ## Quick Start
 
@@ -11,9 +21,23 @@ npm run dev
 
 Open http://localhost:5173
 
+## How It Works
+
+1. **Paste** your labeling instruction document (or enter data manually)
+2. **Review** the extracted topic, subtopics, and edge cases
+3. **Edit** any fields as needed
+4. **Submit** to generate a Google Sheet for labeling
+
+### Document Format
+
+The parser expects labeling documents with:
+- **Title** ending in "Labeling Instructions" → becomes Main Topic
+- **Section 3** (Keyword Reference) → becomes Sub-Topics
+- **Section 5** (Edge Case Guidance) → becomes Edge Cases
+
 ## Deployment
 
-### Vercel (Recommended)
+### Vercel
 1. Push to GitHub
 2. Import repo on vercel.com
 3. Add environment variable: `VITE_WEBHOOK_URL`
@@ -44,7 +68,7 @@ The app sends a POST request to the configured webhook URL with:
   "meta": {
     "source_hash": "sha256 hash of source document",
     "submitted_at": "2024-01-01T12:00:00.000Z",
-    "app_version": "doc-json-ui@0.1.0"
+    "app_version": "create-new-topics@1.0.0"
   }
 }
 ```

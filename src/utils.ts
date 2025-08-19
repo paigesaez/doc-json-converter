@@ -9,6 +9,29 @@ export function prettyJson(obj: unknown): string {
   return JSON.stringify(obj, null, 2);
 }
 
+export function cleanLineItem(line: string): string {
+  let cleaned = line.trim();
+  
+  // Remove common bullet points
+  cleaned = cleaned.replace(/^[•*\-–—]\s*/, '');
+  
+  // Remove surrounding quotes if present
+  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+      (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  
+  // Remove numbering like "1." or "1)"
+  cleaned = cleaned.replace(/^\d+[.)]\s*/, '');
+  
+  // If line contains an arrow, take just the part before it
+  if (cleaned.includes('→')) {
+    cleaned = cleaned.split('→')[0].trim();
+  }
+  
+  return cleaned.trim();
+}
+
 export async function sha256(text: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);

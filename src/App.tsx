@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Send, Trash2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Send, Trash2, CheckCircle, AlertCircle, ExternalLink, FileText, Edit3 } from 'lucide-react';
 import type { Conversion, SubmitPayload, SubmitResponse } from './types';
 import { extractMainTopic, extractSubTopics, extractEdgeCases } from './parser';
-import { prettyJson, sha256, nowIso } from './utils';
+import { prettyJson, sha256, nowIso, cleanLineItem } from './utils';
 
 const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL || 'https://webhook.site/your-webhook-url';
 
 export default function App() {
+  const [inputMode, setInputMode] = useState<'document' | 'manual'>('document');
   const [sourceDoc, setSourceDoc] = useState('');
   const [mainTopic, setMainTopic] = useState('');
   const [subTopics, setSubTopics] = useState('');
@@ -17,7 +18,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (sourceDoc) {
+    if (inputMode === 'document' && sourceDoc) {
       const extractedMain = extractMainTopic(sourceDoc);
       const extractedSub = extractSubTopics(sourceDoc);
       const extractedEdge = extractEdgeCases(sourceDoc);
@@ -26,19 +27,26 @@ export default function App() {
       setSubTopics(extractedSub.join('\n'));
       setEdgeCases(extractedEdge.join('\n'));
     }
-  }, [sourceDoc]);
+  }, [sourceDoc, inputMode]);
 
   const conversion = useMemo<Conversion>(() => {
+    // Clean and filter inputs with consistent rules
+    const cleanedSubTopics = subTopics
+      .split('\n')
+      .map(cleanLineItem)
+      .filter(Boolean)
+      .filter((item, index, self) => self.indexOf(item) === index); // Remove duplicates
+    
+    const cleanedEdgeCases = edgeCases
+      .split('\n')
+      .map(cleanLineItem)
+      .filter(Boolean)
+      .filter((item, index, self) => self.indexOf(item) === index); // Remove duplicates
+    
     return {
-      main_topic: mainTopic.trim(),
-      sub_topics: subTopics
-        .split('\n')
-        .map(t => t.trim())
-        .filter(Boolean),
-      edge_cases: edgeCases
-        .split('\n')
-        .map(t => t.trim())
-        .filter(Boolean),
+      main_topic: cleanLineItem(mainTopic),
+      sub_topics: cleanedSubTopics,
+      edge_cases: cleanedEdgeCases,
     };
   }, [mainTopic, subTopics, edgeCases]);
 
@@ -56,9 +64,9 @@ export default function App() {
       const payload: SubmitPayload = {
         json: conversion,
         meta: {
-          source_hash: await sha256(sourceDoc),
+          source_hash: await sha256(JSON.stringify(conversion)),
           submitted_at: nowIso(),
-          app_version: 'doc-json-ui@0.1.0',
+          app_version: 'create-new-topics@1.0.0',
         },
       };
 
@@ -86,6 +94,14 @@ export default function App() {
   };
 
   const handleClear = () => {
+    // Check if there's any data to clear
+    const hasData = mainTopic || subTopics || edgeCases || sourceDoc;
+    
+    if (hasData) {
+      const confirmClear = window.confirm('Are you sure you want to clear all data?');
+      if (!confirmClear) return;
+    }
+    
     setSourceDoc('');
     setMainTopic('');
     setSubTopics('');
@@ -107,7 +123,7 @@ export default function App() {
           <h2 className="text-2xl font-semibold text-green-900">Submitted</h2>
           <p className="text-gray-700">
             Your sheet is being generated. This usually takes a couple of minutes.
-            Check Google Sheets for <strong>{conversion.main_topic} – Labeled Template</strong>.
+            Check Google Sheets for <strong>Topic Tagging: {conversion.main_topic}</strong>.
           </p>
           {sheetUrl && (
             <a
@@ -132,116 +148,157 @@ export default function App() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-gray-900">Doc → JSON → Submit</h1>
+    <div className="max-w-7xl mx-auto p-6">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Create New Topics</h1>
       
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Source Document
-          </label>
-          <textarea
-            value={sourceDoc}
-            onChange={(e) => setSourceDoc(e.target.value)}
-            placeholder="Paste source doc here..."
-            className="w-full h-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Main Topic
-          </label>
-          <input
-            type="text"
-            value={mainTopic}
-            onChange={(e) => setMainTopic(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-medium text-gray-700">
-              Sub-Topics
-            </label>
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-              {conversion.sub_topics.length} items
-            </span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Input */}
+        <div className="space-y-4">
+          {/* Tab Navigation */}
+          <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+            <button
+              onClick={() => setInputMode('document')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                inputMode === 'document' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              From Document
+            </button>
+            <button
+              onClick={() => setInputMode('manual')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                inputMode === 'manual' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Edit3 className="w-4 h-4" />
+              Manual Input
+            </button>
           </div>
-          <textarea
-            value={subTopics}
-            onChange={(e) => setSubTopics(e.target.value)}
-            placeholder="One item per line"
-            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-          />
-        </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-medium text-gray-700">
-              Edge Cases
+          {/* Document Input (only shown in document mode) */}
+          {inputMode === 'document' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Source Document (Labeling Instructions)
+              </label>
+              <textarea
+                value={sourceDoc}
+                onChange={(e) => setSourceDoc(e.target.value)}
+                placeholder="Paste your complete labeling instructions document here..."
+                className="w-full h-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                The system will extract the main topic, sub-topics from section 3 (Keyword Reference), and edge cases from section 5
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Main Topic
             </label>
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-              {conversion.edge_cases.length} items
-            </span>
+            <input
+              type="text"
+              value={mainTopic}
+              onChange={(e) => setMainTopic(e.target.value)}
+              placeholder={inputMode === 'document' ? "Auto-extracted from document (editable)" : "Enter the main topic"}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
-          <textarea
-            value={edgeCases}
-            onChange={(e) => setEdgeCases(e.target.value)}
-            placeholder="One item per line"
-            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-          />
-        </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-medium text-gray-700">
-              JSON Preview
-            </label>
-            <span className={`text-xs px-2 py-1 rounded ${isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {isValid ? 'Valid' : 'Invalid: ' + (!conversion.main_topic ? 'main_topic required' : 'sub_topics required')}
-            </span>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">
+                Sub-Topics
+              </label>
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                {conversion.sub_topics.length} items
+              </span>
+            </div>
+            <textarea
+              value={subTopics}
+              onChange={(e) => setSubTopics(e.target.value)}
+              placeholder="Paste or type items - one per line. Bullets, numbers, and quotes will be cleaned automatically."
+              className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+            />
           </div>
-          <pre className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg overflow-x-auto text-sm">
-            {prettyJson(conversion)}
-          </pre>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">
+                Edge Cases
+              </label>
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                {conversion.edge_cases.length} items
+              </span>
+            </div>
+            <textarea
+              value={edgeCases}
+              onChange={(e) => setEdgeCases(e.target.value)}
+              placeholder="Paste or type items - one per line. Formatting will be cleaned automatically."
+              className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+            />
+          </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-gray-700">
-            Review and confirm. When you click Submit, we'll send this JSON to our system to generate 
-            a Google Sheet for labeling. This usually takes a couple of minutes. Check Google Sheets 
-            for a new document titled <strong>{conversion.main_topic || '<main_topic>'} – Labeled Template</strong>.
-          </p>
-        </div>
+        {/* Right Column - Preview & Actions */}
+        <div className="space-y-4">
+          <div className="lg:sticky lg:top-6">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium text-gray-700">
+                  JSON Preview
+                </label>
+                <span className={`text-xs px-2 py-1 rounded ${isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {isValid ? 'Valid' : 'Invalid: ' + (!conversion.main_topic ? 'main_topic required' : 'sub_topics required')}
+                </span>
+              </div>
+              <pre className="w-full h-96 p-3 bg-gray-50 border border-gray-200 rounded-lg overflow-auto text-sm">
+                {prettyJson(conversion)}
+              </pre>
+            </div>
 
-        {submitStatus === 'error' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-red-700">
-              <p className="font-medium">Submission failed</p>
-              <p>{errorMessage}</p>
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-gray-700">
+                Review and confirm. When you click Submit, we'll send this JSON to our system to generate 
+                a Google Sheet for labeling. This usually takes a couple of minutes. Check Google Sheets 
+                for a new document titled <strong>Topic Tagging: {conversion.main_topic || '<main_topic>'}</strong>.
+              </p>
+            </div>
+
+            {submitStatus === 'error' && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-red-700">
+                  <p className="font-medium">Submission failed</p>
+                  <p>{errorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={handleSubmit}
+                disabled={!isValid || isSubmitting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                <Send className="w-4 h-4" />
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </button>
+              <button
+                onClick={handleClear}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear
+              </button>
             </div>
           </div>
-        )}
-
-        <div className="flex gap-3">
-          <button
-            onClick={handleSubmit}
-            disabled={!isValid || isSubmitting}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            <Send className="w-4 h-4" />
-            {isSubmitting ? 'Submitting...' : 'Submit'}
-          </button>
-          <button
-            onClick={handleClear}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear
-          </button>
         </div>
       </div>
     </div>
