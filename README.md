@@ -1,2 +1,2 @@
-# generate-JSON
+# doc-json-converter
 UI for converting topics to JSON
