@@ -79,13 +79,18 @@ export function extractSubTopics(src: string): string[] {
     if (inKeywordSection) {
       let cleaned = trimmed;
       
-      // Skip header lines like "High-Signal Keywords & Phrases:" or standalone descriptive text
-      if (/^(high-signal|keywords|phrases|these are|use these|purpose:)/i.test(cleaned)) {
+      // Skip header lines, tips, notes, and standalone descriptive text
+      if (/^(high-signal|keywords|phrases|these are|use these|purpose:|tip:|note:|clarifying)/i.test(cleaned)) {
         continue;
       }
       
-      // Check for lettered subsections (A. B. C. etc)
-      const letterMatch = cleaned.match(/^[A-E]\.\s+(.+)/);
+      // Skip lines that start with emoji indicators like 🛈
+      if (/^[🛈ℹ️📝💡⚠️]/u.test(cleaned)) {
+        continue;
+      }
+      
+      // Check for lettered subsections (A. B. C. D. E. F. etc)
+      const letterMatch = cleaned.match(/^[A-F]\.\s+(.+)/);
       if (letterMatch) {
         topics.push(letterMatch[1]);
         continue;
