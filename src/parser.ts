@@ -89,10 +89,10 @@ export function extractSubTopics(src: string): string[] {
         continue;
       }
       
-      // Check for lettered subsections (A. B. C. D. E. F. etc)
+      // Check for lettered subsections (A. B. C. D. E. F. etc) - these are headers, skip them
       const letterMatch = cleaned.match(/^[A-F]\.\s+(.+)/);
       if (letterMatch) {
-        topics.push(letterMatch[1]);
+        // Skip the header itself, we want the Keywords: line that follows
         continue;
       }
       
@@ -105,13 +105,17 @@ export function extractSubTopics(src: string): string[] {
         continue;
       }
       
-      // Skip lines that start with "Keywords:" as they're usually descriptive
+      // Look for "Keywords:" lines specifically - these have the actual content
       if (cleaned.startsWith('Keywords:')) {
+        const keywordContent = cleaned.substring('Keywords:'.length).trim();
+        if (keywordContent) {
+          topics.push('Keywords: ' + keywordContent);
+        }
         continue;
       }
       
-      // Add non-empty lines that look like categories
-      if (cleaned.length > 2 && cleaned.includes(':')) {
+      // Also add other category lines with colons (for older format)
+      if (cleaned.length > 2 && cleaned.includes(':') && !cleaned.startsWith('Purpose:')) {
         topics.push(cleaned);
       }
     }
