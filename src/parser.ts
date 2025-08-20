@@ -7,13 +7,21 @@ export const RE_SECTION_HEADER = /^(High-Signal Keywords|Keywords & Phrases|High
 export function extractMainTopic(src: string): string {
   const lines = src.split('\n');
   
-  // First look for a title that ends with "Labeling Instructions"
+  // First look for a standalone line that ends with "Labeling Instructions"
   for (const line of lines) {
     const trimmed = line.trim();
+    // Skip intro text that mentions the template
+    if (trimmed.toLowerCase().includes('here\'s') || 
+        trimmed.toLowerCase().includes('template') ||
+        trimmed.toLowerCase().includes('restructured') ||
+        trimmed.toLowerCase().includes('format')) {
+      continue;
+    }
+    
     if (trimmed.includes('Labeling Instructions')) {
       // Extract everything before "Labeling Instructions"
       const topic = trimmed.replace(/\s*Labeling Instructions\s*/gi, '').trim();
-      if (topic) {
+      if (topic && !topic.includes('—')) {
         return topic;
       }
     }
