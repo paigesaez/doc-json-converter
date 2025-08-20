@@ -24,11 +24,6 @@ export function cleanLineItem(line: string): string {
   // Remove numbering like "1." or "1)"
   cleaned = cleaned.replace(/^\d+[.)]\s*/, '');
   
-  // If line contains an arrow, take just the part before it
-  if (cleaned.includes('→')) {
-    cleaned = cleaned.split('→')[0].trim();
-  }
-  
   return cleaned.trim();
 }
 
